@@ -16,6 +16,10 @@
 
 # Wax
 
+## This likely is NOT the version of Wax you are looking for!
+
+Please visit the [original Wax repository](https://github.com/latte-soft/wax/) for the official version of Wax.
+
 [![Stars][badges/stars]][stars] [![License][badges/license]][license] [![Latest Release][badges/latest-release]][latest-release] [![Last Modified][badges/last-modified]][commits] [![Discord Server][badges/discord]][discord]
 
 A Fast Runtime-Based Lua 5.1x+/Luau Project Bundler, Using Roblox Models and Module-Require Semantics
