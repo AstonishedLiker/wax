@@ -113,7 +113,31 @@ local function BundleModel(modelData: string | {roblox.Instance}, envName: strin
 
         -- If it's statically disabled, we just won't include the closure to run
         if InstanceIsAScript and not (InstanceIsABaseScript and instance.Disabled) then
+            -- Resolve `@self` require calls
+            local SELF_REQUIRE_PATTERN = [[require%((["'`])(@self/.-)%1%)]]
             local ScriptSource = instance.Source
+            local Start, End, Quote, RequirePath = string.find(ScriptSource, SELF_REQUIRE_PATTERN)
+
+            while Start and End and Quote and RequirePath do
+                local ResolvedPath = ""
+                local Path = string.split(RequirePath, "/")
+                for _, Subpath in ipairs(Path) do
+                    if Subpath == "@self" then
+                        ResolvedPath ..= "script."
+                    elseif Subpath == ".." then
+                        ResolvedPath ..= "Parent."
+                    else
+                        ResolvedPath = `{string.sub(ResolvedPath, 1, -2)}:FindFirstChild({Quote}{Subpath}{Quote}).`
+                    end
+                end
+
+                local FinalRequire = `require({string.sub(ResolvedPath, 1, -2)})`
+                ScriptSource = string.sub(ScriptSource, 1, Start - 1)
+                    .. FinalRequire
+                    .. string.sub(ScriptSource, End + 1)
+
+                Start, End, Quote, RequirePath = string.find(ScriptSource, SELF_REQUIRE_PATTERN)
+            end
 
             RunIfVerbose(Log.Info, `Compile-checking {instance.ClassName} "{currentPathString}"..`)
             local CompileSuccess, CompileError = pcall(luau.compile, ScriptSource)

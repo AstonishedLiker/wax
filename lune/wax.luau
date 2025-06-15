@@ -71,6 +71,9 @@ SUBCOMMANDS:
       * output[="{input-filename}.lua"]
             The final output file path (must end in .lua or .luau) for the bundled script
 
+      * root[=nil]
+            The optional instance (relative to the model's root) to start bundling from (eg `Shared/ChildModel`, where `Shared` is a child of the model root)
+
       * minify[=false]
             If codegen output should be "minified", which also omits any runtime line
             debugging info (offsets). For 'full' codegen minification (outside of just
@@ -147,6 +150,7 @@ elseif Subcommand == "bundle" then
         -- Option = {Type, DefaultValue, IsRequired?}
         ["input"] = {"string", "default.project.json"},
         ["output"] = {"string", nil},
+        ["root"] = {"string", nil},
         ["minify"] = {"boolean", false},
         ["env-name"] = {"string", nil}, -- BundleModel() internally defaults to "WaxRuntime"
         ["darklua-config-path"] = {"string", nil},
@@ -293,6 +297,14 @@ elseif Subcommand == "bundle" then
         process.exit(1)
     end
 
+    -- `root` option handling:
+
+    local Root = Options["root"]
+    local PathToRoot = nil
+    if Root then
+        PathToRoot = string.split(Root, "/")
+    end
+
     -- `temp-dir-base` option handling:
 
     local TempDirBase = Options["temp-dir-base"]
@@ -396,6 +408,38 @@ elseif Subcommand == "bundle" then
 
         ModelRoot = roblox.deserializeModel(fs.readFile(ModelOutputFileName))
         RemoveFile(ModelOutputFileName) -- Remove temporary rbxm
+    end
+
+    if PathToRoot then
+        local Child = nil
+        for _, Instance in ModelRoot do
+            if Instance.Name ~= PathToRoot[1] then
+                continue
+            end
+
+            Child = Instance
+        end
+
+        if not Child then
+            Log.Error(`Option \`root\` ({Root}) references an invalid child as the first sub-path.\n`)
+            print(DirectionToHelp)
+            process.exit(1)
+        end
+
+        for SubpathCount = 2, #PathToRoot do
+            local NextInstanceName = PathToRoot[SubpathCount]
+            local NextChild = Child:FindFirstChild(NextInstanceName)
+
+            if not NextChild then
+                Log.Error(`Option \`root\` ({Root}) references an invalid child as one of the sub-paths. The last valid path was '{Child:GetFullName()}'\n`)
+                print(DirectionToHelp)
+                process.exit(1)
+            end
+
+            Child = NextChild
+        end
+
+        ModelRoot = Child:GetChildren()
     end
 
     local BundleSuccess, CodegenOutputOrError, FailedCompilations = pcall(BundleModel, ModelRoot, EnvName, Minify, ExtraOffsetLines, Verbose)
