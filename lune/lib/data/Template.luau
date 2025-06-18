@@ -379,7 +379,7 @@ local function LoadScript(scriptRef)
         local RunSuccess = table_remove(PCallReturn, 1)
         if not RunSuccess then
             local ErrorMessage = table_remove(PCallReturn, 1)
-            error(FormatError(ErrorMessage), 0)
+            error(FormatError(ErrorMessage), 3)
         end
 
         StoredModuleValues[scriptRef] = PCallReturn
